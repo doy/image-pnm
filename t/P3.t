@@ -54,4 +54,10 @@ P3
 255 255 255 255 255 255 255 255 255 255 255 255 255 255 255 255 255 255
 IMAGE
 
+is($image->as_string('P4') . "\n", <<IMAGE);
+P4
+6 8
+\x00\x30\x48\x84\xfc\x84\x84\x00
+IMAGE
+
 done_testing;

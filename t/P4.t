@@ -5,7 +5,7 @@ use Test::More;
 
 use Image::PNM;
 
-my $image = Image::PNM->new('t/data/P1.pbm');
+my $image = Image::PNM->new('t/data/P4.pbm');
 
 is($image->width, 6);
 is($image->height, 8);

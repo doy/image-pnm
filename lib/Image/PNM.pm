@@ -138,6 +138,36 @@ HEADER
     return $data;
 }
 
+sub _as_string_P4 {
+    my $self = shift;
+
+    my $data = <<HEADER;
+P4
+$self->{w} $self->{h}
+HEADER
+
+    for my $row (@{ $self->{pixels} }) {
+        my @vals = map {
+            my $val;
+            if (ref($_)) {
+                $val = $self->_to_greyscale(@$_);
+            }
+            else {
+                $val = $_;
+            }
+            $val * 2 > $self->{max} ? '0' : '1'
+        } @$row;
+        push @vals, '0' until @vals % 8 == 0;
+        while (@vals) {
+            my $bits = join('', splice(@vals, 0, 8));
+            my $byte = oct("0b$bits");
+            $data .= pack("C", $byte);
+        }
+    }
+
+    return $data;
+}
+
 sub _parse_string {
     my $self = shift;
     my ($string) = @_;
@@ -253,6 +283,24 @@ sub _parse_pnm_P3 {
     }
 }
 
+sub _parse_pnm_P4 {
+    my $self = shift;
+    my ($next_line) = @_;
+
+    $self->{max} = 1;
+
+    my $next_word = $self->_make_next_bitfield($next_line, 1);
+
+    $self->{pixels} = [];
+    for my $i (1..$self->{h}) {
+        my $row = [];
+        for my $j (1..$self->{w}) {
+            push @$row, $next_word->() ? '0' : '1';
+        }
+        push @{ $self->{pixels} }, $row;
+    }
+}
+
 sub _make_next_word {
     my $self = shift;
     my ($next_line, $ws) = @_;
@@ -268,6 +316,37 @@ sub _make_next_word {
             }
             else {
                 @words = split '', $line;
+            }
+        }
+        my $word = shift @words;
+        die "Invalid color: $word"
+            unless $word =~ /^[0-9]+$/ && $word >= 0 && $word <= $self->{max};
+        return $word;
+    };
+}
+
+sub _make_next_bitfield {
+    my $self = shift;
+    my ($next_line, $bits) = @_;
+
+    my @words;
+    return sub {
+        if (!@words) {
+            my $line = $next_line->();
+            return unless $line;
+            if ($bits) {
+                my $padding = 8 - ($self->{w} % 8);
+                my $per = int($self->{w} / 8) + 1;
+                while (length($line)) {
+                    my $chunk = substr($line, 0, $per, '');
+                    push @words, map {
+                        split '', sprintf("%08b", $_)
+                    } unpack("C*", $chunk);
+                    pop @words for 1..$padding;
+                }
+            }
+            else {
+                @words = unpack("C*", $line);
             }
         }
         my $word = shift @words;
