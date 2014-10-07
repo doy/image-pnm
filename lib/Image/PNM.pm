@@ -69,25 +69,53 @@ sub as_string {
     return $self->$method;
 }
 
-=method width
+=method width($w)
 
-Returns the width of the image in pixels.
+Returns the width of the image in pixels. If C<$w> is given, sets the width of
+the image to C<$w>.
 
 =cut
 
 sub width {
     my $self = shift;
+    my ($w) = @_;
+    if (defined($w)) {
+        for my $row (@{ $self->{pixels} }) {
+            if ($w > $self->{w}) {
+                push @$row, 0
+                    for 1..($w - $self->{w});
+            }
+            else {
+                pop @$row
+                    for 1..($self->{w} - $w);
+            }
+        }
+        $self->{w} = $w;
+    }
     return $self->{w};
 }
 
-=method height
+=method height($h)
 
-Returns the height of the image in pixels.
+Returns the height of the image in pixels. If C<$h> is given, sets the height
+of the image to C<$h>.
 
 =cut
 
 sub height {
     my $self = shift;
+    my ($h) = @_;
+    if (defined($h)) {
+        if ($h > $self->{h}) {
+            push @{ $self->{pixels} }, [ (0) x $self->{w} ]
+                for 1..($h - $self->{h});
+        }
+        else {
+            pop @{ $self->{pixels} }
+                for 1..($self->{h} - $h);
+        }
+        $self->{h} = $h;
+    }
     return $self->{h};
 }
 
@@ -100,10 +128,17 @@ and they are interpreted as being scaled by this value.
 
 sub max_pixel_value {
     my $self = shift;
+    my ($max) = @_;
+    if (defined($max)) {
+        for my $row (@{ $self->{pixels} }) {
+            @$row = map { $_ * $self->{max} / $max } @$row;
+        }
+        $self->{max} = $max;
+    }
     return $self->{max};
 }
 
-=method pixel($row, $col)
+=method pixel($row, $col, $new_value)
 
 Returns the value of a pixel at the given C<$row> and C<$col>. The value is
 returned as an arrayref of three RGB values, where each value ranges from
@@ -113,13 +148,18 @@ C<0.0> to C<1.0>.
 
 sub pixel {
     my $self = shift;
-    my ($row, $col) = @_;
+    my ($row, $col, $new_value) = @_;
 
-    my $pixel = $self->raw_pixel($row, $col);
+    if (defined($new_value)) {
+        $new_value = ref($new_value)
+            ? [ map { $_ * $self->{max} } @$new_value ]
+            : $new_value * $self->{max};
+    }
+    my $pixel = $self->raw_pixel($row, $col, $new_value);
     return [ map { $_ / $self->{max} } @$pixel ];
 }
 
-=method raw_pixel($row, $col)
+=method raw_pixel($row, $col, $new_value)
 
 Returns the value of a pixel at the given C<$row> and C<$col>. The value is
 returned as an arrayref of three RGB values, where each value is an integer
@@ -129,11 +169,16 @@ ranging from C<0> to C<< $image->max_pixel_value >>.
 
 sub raw_pixel {
     my $self = shift;
-    my ($row, $col) = @_;
+    my ($row, $col, $new_value) = @_;
 
     my $pixel = $self->{pixels}[$row][$col];
     die "invalid pixel location ($row, $col)"
         unless defined $pixel;
+
+    if (defined($new_value)) {
+        $self->{pixels}[$row][$col] = $new_value;
+        $pixel = $new_value;
+    }
 
     if (!ref $pixel) {
         $pixel = [ $pixel, $pixel, $pixel ];
