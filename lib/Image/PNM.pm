@@ -35,6 +35,44 @@ sub as_string {
     return $self->$method;
 }
 
+sub width {
+    my $self = shift;
+    return $self->{w};
+}
+
+sub height {
+    my $self = shift;
+    return $self->{h};
+}
+
+sub max_pixel_value {
+    my $self = shift;
+    return $self->{max};
+}
+
+sub pixel {
+    my $self = shift;
+    my ($row, $col) = @_;
+
+    my $pixel = $self->raw_pixel($row, $col);
+    return [ map { $_ / $self->{max} } @$pixel ];
+}
+
+sub raw_pixel {
+    my $self = shift;
+    my ($row, $col) = @_;
+
+    my $pixel = $self->{pixels}[$row][$col];
+    die "invalid pixel location ($row, $col)"
+        unless defined $pixel;
+
+    if (!ref $pixel) {
+        $pixel = [ $pixel, $pixel, $pixel ];
+    }
+
+    return $pixel;
+}
+
 sub _as_string_P3 {
     my $self = shift;
 
