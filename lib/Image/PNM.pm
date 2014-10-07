@@ -1,6 +1,33 @@
 package Image::PNM;
 use strict;
 use warnings;
+# ABSTRACT: parse and generate PNM (PBM, PGM, PPM) files
+
+=head1 SYNOPSIS
+
+  use Image::PNM;
+
+  my $image = Image::PNM->new("image.pbm");
+  my $pixel_value = $image->pixel(1, 2);
+  open my $fh, '>', 'new_image.ppm';
+  $fh->print($image->as_string("P3")); # convert to rgb format
+
+=head1 DESCRIPTION
+
+This module can read and write images in any of the PNM formats (PBM, PGM, or
+PPM).
+
+=cut
+
+=method new($data)
+
+Creates a new image object. If C<$data> is a string, it is interpreted as a
+filename to open, otherwise if it is a scalar reference, it is interpreted as a
+reference to a string containing the contents of a PNM file. If it is not
+passed at all, a new PNM file is created with width and height of 1, a max
+pixel value of 1, and the sole pixel having value 0.
+
+=cut
 
 sub new {
     my $class = shift;
@@ -24,6 +51,13 @@ sub new {
     return $self;
 }
 
+=method as_string($format)
+
+Converts the image object into a PNM format (given by the required argument).
+Returns the PNM data as a string.
+
+=cut
+
 sub as_string {
     my $self = shift;
     my ($format) = @_;
@@ -35,20 +69,47 @@ sub as_string {
     return $self->$method;
 }
 
+=method width
+
+Returns the width of the image in pixels.
+
+=cut
+
 sub width {
     my $self = shift;
     return $self->{w};
 }
+
+=method height
+
+Returns the height of the image in pixels.
+
+=cut
 
 sub height {
     my $self = shift;
     return $self->{h};
 }
 
+=method max_pixel_value
+
+Returns the maximum value allowed for a pixel. Pixel values must be integers,
+and they are interpreted as being scaled by this value.
+
+=cut
+
 sub max_pixel_value {
     my $self = shift;
     return $self->{max};
 }
+
+=method pixel($row, $col)
+
+Returns the value of a pixel at the given C<$row> and C<$col>. The value is
+returned as an arrayref of three RGB values, where each value ranges from
+C<0.0> to C<1.0>.
+
+=cut
 
 sub pixel {
     my $self = shift;
@@ -57,6 +118,14 @@ sub pixel {
     my $pixel = $self->raw_pixel($row, $col);
     return [ map { $_ / $self->{max} } @$pixel ];
 }
+
+=method raw_pixel($row, $col)
+
+Returns the value of a pixel at the given C<$row> and C<$col>. The value is
+returned as an arrayref of three RGB values, where each value is an integer
+ranging from C<0> to C<< $image->max_pixel_value >>.
+
+=cut
 
 sub raw_pixel {
     my $self = shift;
@@ -450,5 +519,42 @@ sub _to_greyscale {
     # https://en.wikipedia.org/wiki/YUV
     int(0.2126*$r + 0.7152*$g + 0.0722*$b + 0.5)
 }
+
+=head1 BUGS
+
+Please report any bugs to GitHub Issues at
+L<https://github.com/doy/image-pnm/issues>.
+
+=head1 SEE ALSO
+
+=head1 SUPPORT
+
+You can find this documentation for this module with the perldoc command.
+
+    perldoc Image::PNM
+
+You can also look for information at:
+
+=over 4
+
+=item * MetaCPAN
+
+L<https://metacpan.org/release/Image-PNM>
+
+=item * RT: CPAN's request tracker
+
+L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Image-PNM>
+
+=item * Github
+
+L<https://github.com/doy/image-pnm>
+
+=item * CPAN Ratings
+
+L<http://cpanratings.perl.org/d/Image-PNM>
+
+=back
+
+=cut
 
 1;
