@@ -168,6 +168,29 @@ HEADER
     return $data;
 }
 
+sub _as_string_P5 {
+    my $self = shift;
+
+    my $data = <<HEADER;
+P5
+$self->{w} $self->{h}
+$self->{max}
+HEADER
+
+    for my $row (@{ $self->{pixels} }) {
+        $data .= pack("C*", map {
+            if (ref($_)) {
+                $self->_to_greyscale(@$_)
+            }
+            else {
+                $_
+            }
+        } @$row);
+    }
+
+    return $data;
+}
+
 sub _parse_string {
     my $self = shift;
     my ($string) = @_;
@@ -296,6 +319,27 @@ sub _parse_pnm_P4 {
         my $row = [];
         for my $j (1..$self->{w}) {
             push @$row, $next_word->() ? '0' : '1';
+        }
+        push @{ $self->{pixels} }, $row;
+    }
+}
+
+sub _parse_pnm_P5 {
+    my ($self) = shift;
+    my ($next_line) = @_;
+
+    chomp (my $max = $next_line->());
+    die "Invalid max color value: $max"
+        unless $max =~ /^[0-9]+$/ && $max > 0;
+    $self->{max} = $max;
+
+    my $next_word = $self->_make_next_bitfield($next_line, 0);
+
+    $self->{pixels} = [];
+    for my $i (1..$self->{h}) {
+        my $row = [];
+        for my $j (1..$self->{w}) {
+            push @$row, $next_word->();
         }
         push @{ $self->{pixels} }, $row;
     }
