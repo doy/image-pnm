@@ -161,9 +161,9 @@ sub _parse_pnm_P3 {
     };
 
     $self->{pixels} = [];
-    for my $i (1..$self->{w}) {
+    for my $i (1..$self->{h}) {
         my $row = [];
-        for my $j (1..$self->{h}) {
+        for my $j (1..$self->{w}) {
             push @$row, [
                 $next_word->(),
                 $next_word->(),
