@@ -82,7 +82,16 @@ $self->{w} $self->{h}
 HEADER
 
     for my $row (@{ $self->{pixels} }) {
-        $data .= join(' ', map { $_ ? '0' : '1' } @$row) . "\n";
+        $data .= join(' ', map {
+            my $val;
+            if (ref($_)) {
+                $val = $self->_to_greyscale(@$_);
+            }
+            else {
+                $val = $_;
+            }
+            $val * 2 > $self->{max} ? '0' : '1'
+        } @$row) . "\n";
     }
 
     return $data;
@@ -98,7 +107,14 @@ $self->{max}
 HEADER
 
     for my $row (@{ $self->{pixels} }) {
-        $data .= join(' ', @$row) . "\n";
+        $data .= join(' ', map {
+            if (ref($_)) {
+                $self->_to_greyscale(@$_)
+            }
+            else {
+                $_
+            }
+        } @$row) . "\n";
     }
 
     return $data;
@@ -114,7 +130,9 @@ $self->{max}
 HEADER
 
     for my $row (@{ $self->{pixels} }) {
-        $data .= join(' ', map { join(' ', @$_) } @$row) . "\n";
+        $data .= join(' ', map {
+            ref($_) ? join(' ', @$_) : "$_ $_ $_"
+        } @$row) . "\n";
     }
 
     return $data;
@@ -257,6 +275,14 @@ sub _make_next_word {
             unless $word =~ /^[0-9]+$/ && $word >= 0 && $word <= $self->{max};
         return $word;
     };
+}
+
+sub _to_greyscale {
+    my $self = shift;
+    my ($r, $g, $b) = @_;
+    # luma calculation
+    # https://en.wikipedia.org/wiki/YUV
+    int(0.2126*$r + 0.7152*$g + 0.0722*$b + 0.5)
 }
 
 1;
