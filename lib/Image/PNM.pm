@@ -73,6 +73,21 @@ sub raw_pixel {
     return $pixel;
 }
 
+sub _as_string_P1 {
+    my $self = shift;
+
+    my $data = <<HEADER;
+P1
+$self->{w} $self->{h}
+HEADER
+
+    for my $row (@{ $self->{pixels} }) {
+        $data .= join(' ', map { $_ ? '0' : '1' } @$row) . "\n";
+    }
+
+    return $data;
+}
+
 sub _as_string_P3 {
     my $self = shift;
 
@@ -140,6 +155,24 @@ sub _parse_pnm {
     return $self->$method($next_line_nocomments);
 }
 
+sub _parse_pnm_P1 {
+    my $self = shift;
+    my ($next_line) = @_;
+
+    $self->{max} = 1;
+
+    my $next_word = $self->_make_next_word($next_line, 0);
+
+    $self->{pixels} = [];
+    for my $i (1..$self->{h}) {
+        my $row = [];
+        for my $j (1..$self->{w}) {
+            push @$row, $next_word->() ? '0' : '1';
+        }
+        push @{ $self->{pixels} }, $row;
+    }
+}
+
 sub _parse_pnm_P3 {
     my $self = shift;
     my ($next_line) = @_;
@@ -149,16 +182,7 @@ sub _parse_pnm_P3 {
         unless $max =~ /^[0-9]+$/ && $max > 0;
     $self->{max} = $max;
 
-    my @words;
-    my $next_word = sub {
-        if (!@words) {
-            chomp(my $line = $next_line->());
-            @words = split ' ', $line;
-        }
-        my $word = shift @words;
-        die "Invalid color: $word" unless $word =~ /^[0-9]+$/;
-        return $word;
-    };
+    my $next_word = $self->_make_next_word($next_line, 1);
 
     $self->{pixels} = [];
     for my $i (1..$self->{h}) {
@@ -172,6 +196,30 @@ sub _parse_pnm_P3 {
         }
         push @{ $self->{pixels} }, $row;
     }
+}
+
+sub _make_next_word {
+    my $self = shift;
+    my ($next_line, $ws) = @_;
+
+    my @words;
+    return sub {
+        if (!@words) {
+            my $line = $next_line->();
+            return unless $line;
+            chomp($line);
+            if ($ws) {
+                @words = split ' ', $line;
+            }
+            else {
+                @words = split '', $line;
+            }
+        }
+        my $word = shift @words;
+        die "Invalid color: $word"
+            unless $word =~ /^[0-9]+$/ && $word >= 0 && $word <= $self->{max};
+        return $word;
+    };
 }
 
 1;
